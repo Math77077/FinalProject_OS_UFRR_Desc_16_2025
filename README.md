@@ -9,6 +9,7 @@ O projeto tem como objetivo investigar se o uso de mecanismos de sincronização
 * `src/`: Contém o código Python do analisador estático e do gerador de CNF.
 * `tests/`: Contém exemplos de código C para teste da ferramenta.
 * `docs/`: Contém o relatório final e outras documentações.
+* `img/`: Contém imagens relacionadas ao projeto e que estão presentes na documentação.
 
 ## Status Atual (22 de Julho de 2025)
 
