@@ -30,7 +30,7 @@ A primeira fase do projeto envolve a análise estática do código fonte C para 
 - **Parsear** um arquivo C e gerar sua Árvore de Sintaxe Abstrata (AST).
 - **Navegar** pela AST para identificar elementos-chave.
 
-### 3.1. Código C de Exemplo (`tests/simple_example.c`)
+### 3.1. Código C de Exemplo (`tests/example.c`)
 
 Para testar a capacidade inicial de parsing, o seguinte código C foi utilizado:
 
@@ -58,3 +58,7 @@ int main() {
     return 0;
 }
 ```
+
+## 4. Resultado Obtido
+
+![Image](../img/resultado-status-22-07.png)
