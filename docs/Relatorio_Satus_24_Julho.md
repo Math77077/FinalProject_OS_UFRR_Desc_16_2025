@@ -68,7 +68,7 @@ Esses resultados demonstram um avanço significativo na identificação detalhad
 
 ## 4. Dificuldades Encontradas
 
-A principal dificuldade encontrada nesta fase foi a implementação de uma lógica robusta para diferenciar e capturar todos os casos de leitura de variáveis globais. Dado que as leituras podem ocorrer em diversos contextos (lado direito de atribuições, argumentos de funções, expressões lógicas, retornos de função, etc.), foi necessário desenvolver uma função auxiliar (\_find_reads_in_expr) para percorrer recursivamente os nós da AST e identificar esses usos.
+A principal dificuldade encontrada nesta fase foi a implementação de uma lógica robusta para diferenciar e capturar todos os casos de leitura de variáveis globais. Dado que as leituras podem ocorrer em diversos contextos (lado direito de atribuições, argumentos de funções, expressões lógicas, retornos de função, etc.), foi necessário desenvolver uma função auxiliar (`_find_reads_in_expr`) para percorrer recursivamente os nós da AST e identificar esses usos.
 
 ## 5. Resultado Obtido
 
