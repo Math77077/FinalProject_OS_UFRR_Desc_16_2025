@@ -124,50 +124,96 @@ class AST_Visitor(c_ast.NodeVisitor):
 
         self.generic_visit(node)
 
-    
-    #def visit_ID(self, node):
-    #    if node.name == 'global_var':
-    #        print(f" --USO ID-- Variavel: {node.name}, Linha: {node.coord.line}")
-    #    self.generic_visit(node)
+def analyze_program_flow(visitor):
+    """
+    Consolida todos os eventos (locks, unlocks, acessos), ordena-os por função
+    e linha, e determina se os acessos a variáveis globais estão protegidos.
+    """
+    events_by_function = {}
+
+    for access in visitor.accesses:
+        func = access['function']
+        if func not in events_by_function:
+            events_by_function[func] = []
+        events_by_function[func].append({**access, 'event_type': 'access'})
+
+    for lock in visitor.lock_calls:
+        func = lock['function']
+        if func not in events_by_function:
+            events_by_function[func] = []
+        events_by_function[func].append({**lock, 'event_type': 'lock'})
+
+    for unlock in visitor.unlock_calls:
+        func = unlock['function']
+        if func not in events_by_function:
+            events_by_function[func] = []
+        events_by_function[func].append({**unlock, 'event_type': 'unlock'})
+
+    analysis_result = {}
+
+    for func, events in events_by_function.items():
+        sorted_events = sorted(events, key=lambda x: x['line'])
+        
+        # assume que o lock está inicialmente liberado (unlocked)
+        lock_state = 'unlocked'
+        
+        processed_events = []
+        for event in sorted_events:
+            if event['event_type'] == 'access':
+                event['protected'] = (lock_state == 'locked')
+            
+            # atualiza o estado do lock
+            if event['event_type'] == 'lock':
+                lock_state = 'locked'
+            elif event['event_type'] == 'unlock':
+                lock_state = 'unlocked'
+            
+            processed_events.append(event)
+        
+        analysis_result[func] = processed_events
+
+    return analysis_result
+
 
 def parse_c_file(filename):
     fake_libc_include_path = os.path.join(PYCPARSER_UTILS_DIR, 'fake_libc_include') #vai permitir que lidemos/resolvamos includes como <pthread.h>
     print(f"Fazendo uso de fake_libc_include de: {fake_libc_include_path}")
 
     try:
-        cpp_executable = 'cpp'
-
         ast = parse_file(filename, use_cpp=True, cpp_args=['-E', '-nostdinc', '-I' + fake_libc_include_path])
-        print(f"\n--- AST para '{filename}' ---")
-
+        
         visitor = AST_Visitor()
         visitor.visit(ast)
 
-        print("\n--- Sumario da Analise ---")
+        print("\n--- Sumario da Analise Bruta ---")
         print("Variaveis Globais Identificadas")
         if not visitor.global_variables:
             print(" Nenhuma variavel global encontrada.")
         for var in visitor.global_variables:
             print(f"  - {var['name']} (Linha: {var['line']}, Coluna: {var['column']})")
-
-        print("\nChamadas pthread_mutex_lock Identificadas:")
-        if not visitor.lock_calls:
-            print(" Nenhuma chamada pthread_mutex_lock encontrada.")
-        for call in visitor.lock_calls:
-            print(f"   - {call['name']} na funcao '{call['function']}' (Linha: {call['line']}, Coluna: {call['column']})")
         
-        print("\nChamadas pthread_mutex_unlock Identificadas:")
-        if not visitor.unlock_calls:
-            print(" Nenhuma chamada pthread_mutex_unlock encontrada.")
-        for call in visitor.unlock_calls:
-            print(f"   - {call['name']} na funcao '{call['function']}' (Linha: {call['line']}, Coluna: {call['column']})")
+        detailed_analysis = analyze_program_flow(visitor)
 
-        print("\nAcessos a Variaveis Globais (leitura/escrita):")
-        if not visitor.accesses:
-            print(" Nenhum acesso a variavel global identificado.")
-        for access in visitor.accesses:
-            print(f"   - Variavel: {access['variable']}, Tipo: {access['type']}, Funcao: '{access['function']}', Linha: {access['line']}, Coluna: {access['column']}")
-        print("------------------------------------------")
+        print("\n--- Analise Detalhada de Transicoes e Protecao por Locks ---")
+        if not detailed_analysis:
+            print(" Nenhuma funcao com operacoes concorrentes para analisar.")
+
+        for func, events in detailed_analysis.items():
+            print(f"\n[ Funcao: {func} ]")
+            if not events:
+                print("  Nenhum evento (acesso, lock, unlock) identificado.")
+                continue
+            
+            print("  Estado inicial do Lock: unlocked")
+            for event in events:
+                if event['event_type'] == 'access':
+                    print(f"  - Linha {event['line']}: Acesso '{event['type']}' a var '{event['variable']}'. Protegido: {event['protected']}")
+                elif event['event_type'] == 'lock':
+                    print(f"  - Linha {event['line']}: Chamada a '{event['name']}'. Estado do lock -> locked")
+                elif event['event_type'] == 'unlock':
+                    print(f"  - Linha {event['line']}: Chamada a '{event['name']}'. Estado do lock -> unlocked")
+
+        print("\n------------------------------------------")
 
     except Exception as e:
         print(f"Erro ao parsear o arquivo {filename}: {e}")
